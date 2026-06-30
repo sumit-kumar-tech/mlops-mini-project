@@ -45,7 +45,7 @@ def removing_punctuations(text):
     """Remove punctuations from the text."""
     text = re.sub('[%s]' % re.escape(string.punctuation), ' ', text)
     text = text.replace('؛', "")
-    text = re.sub('\s+', ' ', text).strip()
+    text = re.sub(r'\s+', ' ', text).strip()
     return text
 
 def removing_urls(text):
@@ -90,10 +90,18 @@ app = Flask(__name__)
 # load model from model registry
 def get_latest_model_version(model_name):
     client = mlflow.MlflowClient()
-    latest_version = client.get_latest_versions(model_name, stages=["Production"])
-    if not latest_version:
-        latest_version = client.get_latest_versions(model_name, stages=["None"])
-    return latest_version[0].version if latest_version else None
+
+    versions = client.search_model_versions(f"name='{model_name}'")
+
+    if not versions:
+        return None
+
+    latest_version = max(
+        versions,
+        key=lambda v: int(v.version)
+    )
+
+    return latest_version.version
 
 model_name = "my_model"
 model_version = get_latest_model_version(model_name)
