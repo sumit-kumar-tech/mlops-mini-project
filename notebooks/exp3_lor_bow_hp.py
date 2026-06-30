@@ -81,7 +81,11 @@ df = normalize_text(df)
 x = df['sentiment'].isin(['happiness','sadness'])
 df = df[x]
 
-df['sentiment'] = df['sentiment'].replace({'sadness':0, 'happiness':1})
+df['sentiment'] = (
+    df['sentiment']
+    .replace({'sadness': 0, 'happiness': 1})
+    .astype(int)
+)
 
 vectorizer = CountVectorizer()
 X = vectorizer.fit_transform(df['content'])
@@ -100,6 +104,10 @@ param_grid = {
     'penalty': ['l1', 'l2'],
     'solver': ['liblinear']
 }
+
+# End any active MLflow run
+if mlflow.active_run():
+    mlflow.end_run()
 
 # Start the parent run for hyperparameter tuning
 with mlflow.start_run(run_name="GridSearchCV Logistic Regression"):
@@ -155,8 +163,4 @@ with mlflow.start_run(run_name="GridSearchCV Logistic Regression"):
     mlflow.sklearn.log_model(
     grid_search.best_estimator_,
     name="model"
-)
-    mlflow.sklearn.log_model(
-    grid_search,
-    name="grid_search"
 )
