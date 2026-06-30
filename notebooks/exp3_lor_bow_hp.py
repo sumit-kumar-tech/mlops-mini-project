@@ -53,7 +53,7 @@ def removing_punctuations(text):
     """Remove punctuations from the text."""
     text = re.sub('[%s]' % re.escape(string.punctuation), ' ', text)
     text = text.replace('؛', "")
-    text = re.sub('\s+', ' ', text).strip()
+    text = re.sub(r'\s+', ' ', text).strip()
     return text
 
 def removing_urls(text):
@@ -89,7 +89,10 @@ y = df['sentiment']
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 # Set the experiment name
-mlflow.set_experiment("LoR Hyperparameter Tuning")
+mlflow.log_param("algorithm", "LogisticRegression")
+mlflow.log_param("vectorizer", "CountVectorizer")
+mlflow.log_param("cv_folds", 5)
+mlflow.log_param("scoring", "f1")
 
 # Define hyperparameter grid for Logistic Regression
 param_grid = {
@@ -99,7 +102,7 @@ param_grid = {
 }
 
 # Start the parent run for hyperparameter tuning
-with mlflow.start_run():
+with mlflow.start_run(run_name="GridSearchCV Logistic Regression"):
 
     # Perform grid search
     grid_search = GridSearchCV(LogisticRegression(), param_grid, cv=5, scoring='f1', n_jobs=-1)
@@ -138,6 +141,7 @@ with mlflow.start_run():
     # Log the best run details in the parent run
     best_params = grid_search.best_params_
     best_score = grid_search.best_score_
+    mlflow.sklearn.log_model(vectorizer,name="vectorizer")
     mlflow.log_params(best_params)
     mlflow.log_metric("best_f1_score", best_score)
     
@@ -148,4 +152,11 @@ with mlflow.start_run():
     mlflow.log_artifact(__file__)
 
     # Log model
-    mlflow.sklearn.log_model(grid_search.best_estimator_, "model")
+    mlflow.sklearn.log_model(
+    grid_search.best_estimator_,
+    name="model"
+)
+    mlflow.sklearn.log_model(
+    grid_search,
+    name="grid_search"
+)

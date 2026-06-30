@@ -56,7 +56,7 @@ def removing_punctuations(text):
     """Remove punctuations from the text."""
     text = re.sub('[%s]' % re.escape(string.punctuation), ' ', text)
     text = text.replace('؛', "")
-    text = re.sub('\s+', ' ', text).strip()
+    text = re.sub(r'\s+', ' ', text).strip()
     return text
 
 def removing_urls(text):
@@ -99,7 +99,10 @@ vectorizers = {
 algorithms = {
     'LogisticRegression': LogisticRegression(),
     'MultinomialNB': MultinomialNB(),
-    'XGBoost': XGBClassifier(),
+    'XGBoost': XGBClassifier(
+    random_state=42,
+    eval_metric="logloss",
+    use_label_encoder=False),
     'RandomForest': RandomForestClassifier(),
     'GradientBoosting': GradientBoostingClassifier()
 }
@@ -154,7 +157,15 @@ with mlflow.start_run(run_name="All Experiments") as parent_run:
                 mlflow.log_metric("f1_score", f1)
                 
                 # Log model
-                mlflow.sklearn.log_model(model, "model")
+                # Log model
+                import mlflow.sklearn
+                import mlflow.xgboost
+                from xgboost import XGBClassifier
+
+                if isinstance(model, XGBClassifier):
+                    mlflow.xgboost.log_model(model, name="model")
+                else:
+                    mlflow.sklearn.log_model(model, name="model") 
                 
                 # Save and log the notebook
                 mlflow.log_artifact(__file__)
