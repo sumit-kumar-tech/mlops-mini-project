@@ -5,6 +5,8 @@ import mlflow
 import logging
 import os
 import dagshub
+from dotenv import load_dotenv
+load_dotenv()
 
 # Set up DagsHub credentials for MLflow tracking
 dagshub_token = os.getenv("DAGSHUB_PAT")
@@ -15,7 +17,7 @@ os.environ["MLFLOW_TRACKING_USERNAME"] = dagshub_token
 os.environ["MLFLOW_TRACKING_PASSWORD"] = dagshub_token
 
 dagshub_url = "https://dagshub.com"
-repo_owner = "campusx-official"
+repo_owner = "sumitme752"
 repo_name = "mlops-mini-project"
 
 # Set up MLflow tracking URI
