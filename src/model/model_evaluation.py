@@ -128,7 +128,8 @@ def main():
             y_test = test_data.iloc[:, -1].values
 
             metrics = evaluate_model(clf, X_test, y_test)
-            
+
+            os.makedirs("reports", exist_ok=True)
             save_metrics(metrics, 'reports/metrics.json')
             
             # Log metrics to MLflow
@@ -146,7 +147,7 @@ def main():
             
             # Save model info
             save_model_info(run.info.run_id, "model", 'reports/experiment_info.json')
-            mlflow.log_artifact("reports/model_info.json")
+            mlflow.log_artifact("reports/experiment_info.json")
             
             # Log the metrics file to MLflow
             mlflow.log_artifact('reports/metrics.json')
