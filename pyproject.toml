@@ -4,4 +4,13 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "dagshub>=0.7.0",
+    "ipykernel>=7.3.0",
+    "mlflow>=3.14.0",
+    "nbconvert>=7.17.1",
+    "nltk>=3.9.4",
+    "notebook>=7.6.0",
+    "pandas>=2.3.3",
+    "scikit-learn>=1.9.0",
+]
