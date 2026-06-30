@@ -103,10 +103,15 @@ def get_latest_model_version(model_name):
 
     return latest_version.version
 
-model_name = "my_model"
-model_version = get_latest_model_version(model_name)
+# model_name = "my_model"
+# model_version = get_latest_model_version(model_name)
 
-model_uri = f'models:/{model_name}/{model_version}'
+# model_uri = f'models:/{model_name}/{model_version}'
+# model = mlflow.pyfunc.load_model(model_uri)
+run_id = "dce07f7221c24cf1be1cbbb9b631498f"   # replace with your latest successful run id
+
+model_uri = f"runs:/{run_id}/model"
+
 model = mlflow.pyfunc.load_model(model_uri)
 
 vectorizer = pickle.load(open('models/vectorizer.pkl','rb'))
