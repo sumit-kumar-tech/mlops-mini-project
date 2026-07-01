@@ -19,6 +19,15 @@
             {% else %}
                 <h2>Sad</h2>
             {% endif %}
+            <p>Prediction label: {{ result }}</p>
+            {% if confidence is not none %}
+                <p>Confidence: {{ "%.2f"|format(confidence) }}%</p>
+            {% endif %}
+            <p>Matched words: {{ matched_words }}</p>
+            <p>Cleaned text: {{ cleaned_text }}</p>
+            {% if message %}
+                <p>{{ message }}</p>
+            {% endif %}
         {% endif %}
     </body>
 </html>

@@ -1,33 +1,39 @@
-# updated app.py
-
-from flask import Flask, render_template,request
-import mlflow
 import pickle
-import os
-import pandas as pd
+from pathlib import Path
+import re
+import string
 
 import numpy as np
-import pandas as pd
-import os
-import re
-import nltk
-import string
+from flask import Flask, render_template, request
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
-from dotenv import load_dotenv
-load_dotenv()
+
+
+BASE_DIR = Path(__file__).resolve().parent
+MODEL_DIR = BASE_DIR.parent / "models"
+
+try:
+    STOP_WORDS = set(stopwords.words("english"))
+except LookupError:
+    STOP_WORDS = {
+        "a", "an", "and", "are", "as", "at", "be", "by", "for", "from",
+        "has", "he", "in", "is", "it", "its", "of", "on", "that", "the",
+        "to", "was", "were", "will", "with",
+    }
+LEMMATIZER = WordNetLemmatizer()
 
 def lemmatization(text):
     """Lemmatize the text."""
-    lemmatizer = WordNetLemmatizer()
     text = text.split()
-    text = [lemmatizer.lemmatize(word) for word in text]
+    try:
+        text = [LEMMATIZER.lemmatize(word) for word in text]
+    except LookupError:
+        pass
     return " ".join(text)
 
 def remove_stop_words(text):
     """Remove stop words from the text."""
-    stop_words = set(stopwords.words("english"))
-    text = [word for word in str(text).split() if word not in stop_words]
+    text = [word for word in str(text).split() if word not in STOP_WORDS]
     return " ".join(text)
 
 def removing_numbers(text):
@@ -53,12 +59,6 @@ def removing_urls(text):
     url_pattern = re.compile(r'https?://\S+|www\.\S+')
     return url_pattern.sub(r'', text)
 
-def remove_small_sentences(df):
-    """Remove sentences with less than 3 words."""
-    for i in range(len(df)):
-        if len(df.text.iloc[i].split()) < 3:
-            df.text.iloc[i] = np.nan
-
 def normalize_text(text):
     text = lower_case(text)
     text = remove_stop_words(text)
@@ -70,55 +70,17 @@ def normalize_text(text):
     return text
 
 
-# Set up DagsHub credentials for MLflow tracking
-dagshub_token = os.getenv("DAGSHUB_PAT")
-if not dagshub_token:
-    raise EnvironmentError("DAGSHUB_PAT environment variable is not set")
-
-os.environ["MLFLOW_TRACKING_USERNAME"] = dagshub_token
-os.environ["MLFLOW_TRACKING_PASSWORD"] = dagshub_token
-
-dagshub_url = "https://dagshub.com"
-repo_owner = "sumitme752"
-repo_name = "mlops-mini-project"
-
-# Set up MLflow tracking URI
-mlflow.set_tracking_uri(f'{dagshub_url}/{repo_owner}/{repo_name}.mlflow')
-
 app = Flask(__name__)
 
-# load model from model registry
-def get_latest_model_version(model_name):
-    client = mlflow.MlflowClient()
+with open(MODEL_DIR / "model.pkl", "rb") as model_file:
+    model = pickle.load(model_file)
 
-    versions = client.search_model_versions(f"name='{model_name}'")
-
-    if not versions:
-        return None
-
-    latest_version = max(
-        versions,
-        key=lambda v: int(v.version)
-    )
-
-    return latest_version.version
-
-# model_name = "my_model"
-# model_version = get_latest_model_version(model_name)
-
-# model_uri = f'models:/{model_name}/{model_version}'
-# model = mlflow.pyfunc.load_model(model_uri)
-run_id = "dce07f7221c24cf1be1cbbb9b631498f"   # replace with your latest successful run id
-
-model_uri = f"runs:/{run_id}/model"
-
-model = mlflow.pyfunc.load_model(model_uri)
-
-vectorizer = pickle.load(open('models/vectorizer.pkl','rb'))
+with open(MODEL_DIR / "vectorizer.pkl", "rb") as vectorizer_file:
+    vectorizer = pickle.load(vectorizer_file)
 
 @app.route('/')
 def home():
-    return render_template('index.html',result=None)
+    return render_template("index.html", result=None)
 
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -131,15 +93,26 @@ def predict():
     # bow
     features = vectorizer.transform([text])
 
-    # Convert sparse matrix to DataFrame
-    features_df = pd.DataFrame.sparse.from_spmatrix(features)
-    features_df = pd.DataFrame(features.toarray(), columns=[str(i) for i in range(features.shape[1])])
-
     # prediction
-    result = model.predict(features_df)
+    features_array = features.toarray()
+    result = int(model.predict(features_array)[0])
+    confidence = None
+    if hasattr(model, "predict_proba"):
+        confidence = float(np.max(model.predict_proba(features_array)[0]) * 100)
+
+    message = None
+    if features.nnz == 0:
+        message = "No known words found in the model vocabulary. Try a longer sentence."
 
     # show
-    return render_template('index.html', result=result[0])
+    return render_template(
+        "index.html",
+        result=result,
+        confidence=confidence,
+        cleaned_text=text,
+        matched_words=features.nnz,
+        message=message,
+    )
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0")
+    app.run(debug=True, host="0.0.0.0", use_reloader=False,port=5001)
